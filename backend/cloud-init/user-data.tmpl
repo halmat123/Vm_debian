@@ -1,0 +1,28 @@
+#cloud-config
+hostname: yadro-vm
+manage_etc_hosts: true
+disable_root: true
+ssh_pwauth: false
+ssh_deletekeys: true
+
+users:
+  - name: debian
+    shell: /bin/bash
+    groups: [adm, sudo]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - __SSH_PUBLIC_KEY__
+
+write_files:
+  - path: /etc/systemd/system/serial-getty@ttyAMA0.service.d/autologin.conf
+    permissions: '0644'
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin debian --noclear %I $TERM
+
+runcmd:
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, serial-getty@ttyAMA0.service]
+  - [systemctl, restart, serial-getty@ttyAMA0.service]

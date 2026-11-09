@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      YADRO_CONTAINER: "1"
+      VM_ACCEL: tcg
+      VM_CPU: max
+      VM_DATA_DIR: /var/lib/yadro-vm
+      VM_RUNTIME_DIR: /run/yadro-vm
+      QEMU_BINARY: /opt/qemu/bin/qemu-system-aarch64
+      QEMU_IMG: /opt/qemu/bin/qemu-img
+      QEMU_FIRMWARE: /opt/qemu/share/qemu/edk2-aarch64-code.fd
+      QEMU_VARS_TEMPLATE: /opt/qemu/share/qemu/edk2-arm-vars.fd
+      SSH_PRIVATE_KEY: /var/lib/yadro-vm/ssh/id_ed25519
+      SSH_KNOWN_HOSTS: /var/lib/yadro-vm/ssh/known_hosts
+      SSH_TRUST_ON_FIRST_USE: "1"
+      VM_STOP_TIMEOUT: "120"
+    volumes:
+      - vm-data:/var/lib/yadro-vm
+    init: true
+    stop_grace_period: 150s
+    healthcheck:
+      test:
+        - CMD
+        - /opt/venv/bin/python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15m
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+
+volumes:
+  vm-data:
